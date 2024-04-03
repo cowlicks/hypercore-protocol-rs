@@ -6,7 +6,7 @@ const split = require('split2')
 const PORT = 8000
 
 const EXAMPLE_NODE = p.join(__dirname, 'replicate.js')
-const EXAMPLE_RUST = 'replication'
+const EXAMPLE_RUST = 'tokio-replication'
 const MODE = process.argv[2]
 if (!MODE) {
   usage()
@@ -28,7 +28,7 @@ function startNode (mode, key, color, name) {
 }
 
 function startRust (mode, key, color, name) {
-  const args = ['run', '--example', EXAMPLE_RUST, '--', mode, PORT]
+  const args = ['run', '--no-default-features', '-F', 'tokio', '--example', EXAMPLE_RUST, '--', mode, PORT]
   if (key) args.push(key)
   const rust = start({
     bin: 'cargo',

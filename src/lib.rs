@@ -27,13 +27,13 @@
 //!
 //! When using disk storage for hypercore, clearing values may create sparse files. On by default.
 //!
-//! ### `async-std` (default)
-//!
-//! Use the async-std runtime, on by default. Either this or `tokio` is mandatory.
-//!
-//! ### `tokio`
+//! ### `tokio` (default)
 //!
 //! Use the tokio runtime. Either this or `async_std` is mandatory.
+//!
+//! ### `async-std`
+//!
+//! Use the async-std runtime, on by default. Either this or `tokio` is mandatory.
 //!
 //! ### `wasm-bindgen`
 //!

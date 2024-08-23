@@ -1,8 +1,6 @@
 use anyhow::Result;
-use async_std::net::{TcpListener, TcpStream};
-use async_std::prelude::*;
-use async_std::sync::{Arc, Mutex};
-use async_std::task;
+use tokio::io::AsyncReadExt;
+//use async_std::net::{TcpListener, TcpStream};
 use env_logger::Env;
 use futures_lite::stream::StreamExt;
 use hypercore::{
@@ -14,11 +12,19 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::env;
 use std::fmt::Debug;
+use std::future::Future;
+use std::sync::Arc;
+use tokio::net::{Stream, TcpListener, TcpStream};
+//use tokio::net::{TcpListener, TcpStream};
+use async_compat::{Compat, CompatExt};
+use tokio::spawn;
+use tokio::sync::Mutex;
 
 use hypercore_protocol::schema::*;
 use hypercore_protocol::{discovery_key, Channel, Event, Message, ProtocolBuilder};
 
-fn main() {
+#[tokio::main]
+async fn main() {
     init_logger();
     if env::args().count() < 3 {
         usage();
@@ -35,43 +41,41 @@ fn main() {
             .expect("Key has to be a 32 byte hex string")
     });
 
-    task::block_on(async move {
-        let mut hypercore_store: HypercoreStore = HypercoreStore::new();
-        let storage = Storage::new_memory().await.unwrap();
-        // Create a hypercore.
-        let hypercore = if let Some(key) = key {
-            let public_key = VerifyingKey::from_bytes(&key).unwrap();
-            HypercoreBuilder::new(storage)
-                .key_pair(PartialKeypair {
-                    public: public_key,
-                    secret: None,
-                })
-                .build()
-                .await
-                .unwrap()
-        } else {
-            let mut hypercore = HypercoreBuilder::new(storage).build().await.unwrap();
-            let batch: &[&[u8]] = &[b"hi\n", b"ola\n", b"hello\n", b"mundo\n"];
-            hypercore.append_batch(batch).await.unwrap();
-            hypercore
-        };
-        println!(
-            "KEY={}",
-            hex::encode(hypercore.key_pair().public.as_bytes())
-        );
-        info!("{} opened hypercore", mode);
-        // Wrap it and add to the hypercore store.
-        let hypercore_wrapper = HypercoreWrapper::from_memory_hypercore(hypercore);
-        hypercore_store.add(hypercore_wrapper);
-        let hypercore_store = Arc::new(hypercore_store);
+    let mut hypercore_store: HypercoreStore = HypercoreStore::new();
+    let storage = Storage::new_memory().await.unwrap();
+    // Create a hypercore.
+    let hypercore = if let Some(key) = key {
+        let public_key = VerifyingKey::from_bytes(&key).unwrap();
+        HypercoreBuilder::new(storage)
+            .key_pair(PartialKeypair {
+                public: public_key,
+                secret: None,
+            })
+            .build()
+            .await
+            .unwrap()
+    } else {
+        let mut hypercore = HypercoreBuilder::new(storage).build().await.unwrap();
+        let batch: &[&[u8]] = &[b"hi\n", b"ola\n", b"hello\n", b"mundo\n"];
+        hypercore.append_batch(batch).await.unwrap();
+        hypercore
+    };
+    println!(
+        "KEY={}",
+        hex::encode(hypercore.key_pair().public.as_bytes())
+    );
+    info!("{} opened hypercore", mode);
+    // Wrap it and add to the hypercore store.
+    let hypercore_wrapper = HypercoreWrapper::from_memory_hypercore(hypercore);
+    hypercore_store.add(hypercore_wrapper);
+    let hypercore_store = Arc::new(hypercore_store);
 
-        let result = match mode.as_ref() {
-            "server" => tcp_server(address, onconnection, hypercore_store).await,
-            "client" => tcp_client(address, onconnection, hypercore_store).await,
-            _ => panic!("{:?}", usage()),
-        };
-        log_if_error(&result);
-    });
+    let result = match mode.as_ref() {
+        "server" => tcp_server(address, onconnection, hypercore_store).await,
+        "client" => tcp_client(address, onconnection, hypercore_store).await,
+        _ => panic!("{:?}", usage()),
+    };
+    log_if_error(&result);
 }
 
 /// Print usage and exit.
@@ -90,7 +94,7 @@ async fn onconnection(
     hypercore_store: Arc<HypercoreStore>,
 ) -> Result<()> {
     info!("onconnection, initiator: {}", is_initiator);
-    let mut protocol = ProtocolBuilder::new(is_initiator).connect(stream);
+    let mut protocol = ProtocolBuilder::new(is_initiator).connect(Compat::new(stream));
     info!("protocol created, polling for next()");
     while let Some(event) = protocol.next().await {
         let event = event?;
@@ -167,7 +171,7 @@ impl HypercoreWrapper {
     pub fn onpeer(&self, mut channel: Channel) {
         let mut peer_state = PeerState::default();
         let mut hypercore = self.hypercore.clone();
-        task::spawn(async move {
+        spawn(async move {
             let info = {
                 let hypercore = hypercore.lock().await;
                 hypercore.info()
@@ -438,12 +442,12 @@ where
 {
     let listener = TcpListener::bind(&address).await?;
     log::info!("listening on {}", listener.local_addr()?);
-    let mut incoming = listener.incoming();
+    let mut incoming = listener.accept().await?.0;
     while let Some(Ok(stream)) = incoming.next().await {
         let context = context.clone();
         let peer_addr = stream.peer_addr().unwrap();
         log::info!("new connection from {}", peer_addr);
-        task::spawn(async move {
+        spawn(async move {
             let result = onconnection(stream, false, context).await;
             log_if_error(&result);
             log::info!("connection closed from {}", peer_addr);

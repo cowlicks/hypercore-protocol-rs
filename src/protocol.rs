@@ -134,7 +134,6 @@ impl fmt::Debug for State {
 }
 
 /// A Protocol stream.
-#[derive(Debug)]
 pub struct Protocol<IO: AsyncWrite + AsyncRead + Send + Unpin + 'static> {
     write_state: WriteState,
     read_state: ReadState,
@@ -149,6 +148,26 @@ pub struct Protocol<IO: AsyncWrite + AsyncRead + Send + Unpin + 'static> {
     outbound_tx: Sender<Vec<ChannelMessage>>,
     keepalive: Delay,
     queued_events: VecDeque<Event>,
+}
+
+impl<IO: AsyncWrite + AsyncRead + Send + Unpin + 'static> std::fmt::Debug for Protocol<IO> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Protocol")
+            .field("write_state", &self.write_state)
+            .field("read_state", &self.read_state)
+            //.field("io", &self.io)
+            .field("state", &self.state)
+            .field("options", &self.options)
+            .field("handshake", &self.handshake)
+            .field("channels", &self.channels)
+            .field("command_rx", &self.command_rx)
+            .field("command_tx", &self.command_tx)
+            .field("outbound_rx", &self.outbound_rx)
+            .field("outbound_tx", &self.outbound_tx)
+            .field("keepalive", &self.keepalive)
+            .field("queued_events", &self.queued_events)
+            .finish()
+    }
 }
 
 impl<IO> Protocol<IO>

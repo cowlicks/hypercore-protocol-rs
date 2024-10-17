@@ -2,10 +2,9 @@ use hypercore::encoding::{CompactEncoding, EncodingError, HypercoreState, State}
 use hypercore::{
     DataBlock, DataHash, DataSeek, DataUpgrade, Proof, RequestBlock, RequestSeek, RequestUpgrade,
 };
-use serde::Serialize;
 
 /// Open message
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Open {
     /// Channel id to open
     pub channel: u64,
@@ -61,7 +60,7 @@ impl CompactEncoding<Open> for State {
 }
 
 /// Close message
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Close {
     /// Channel id to close
     pub channel: u64,
@@ -83,7 +82,7 @@ impl CompactEncoding<Close> for State {
 }
 
 /// Synchronize message. Type 0.
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Synchronize {
     /// Fork id, set to 0 for an un-forked hypercore.
     pub fork: u64,
@@ -137,7 +136,7 @@ impl CompactEncoding<Synchronize> for State {
 }
 
 /// Request message. Type 1.
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Request {
     /// Request id, will be returned with corresponding [Data]
     pub id: u64,
@@ -232,7 +231,7 @@ impl CompactEncoding<Request> for HypercoreState {
 }
 
 /// Cancel message for a [Request]. Type 2
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Cancel {
     /// Request to cancel, see field `id` in [Request]
     pub request: u64,
@@ -254,7 +253,7 @@ impl CompactEncoding<Cancel> for State {
 }
 
 /// Data message responding to received [Request]. Type 3.
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Data {
     /// Request this data is for, see field `id` in [Request]
     pub request: u64,
@@ -362,7 +361,7 @@ impl Data {
 }
 
 /// No data message. Type 4.
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct NoData {
     /// Request this message is for, see field `id` in [Request]
     pub request: u64,
@@ -384,7 +383,7 @@ impl CompactEncoding<NoData> for State {
 }
 
 /// Want message. Type 5.
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Want {
     /// Start index
     pub start: u64,
@@ -410,7 +409,7 @@ impl CompactEncoding<Want> for State {
 }
 
 /// Un-want message. Type 6.
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Unwant {
     /// Start index
     pub start: u64,
@@ -436,7 +435,7 @@ impl CompactEncoding<Unwant> for State {
 }
 
 /// Bitfield message. Type 7.
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Bitfield {
     /// Start index of bitfield
     pub start: u64,
@@ -464,7 +463,7 @@ impl CompactEncoding<Bitfield> for State {
 /// Range message. Type 8.
 /// Sender sharing info about a range of contiguous blocks it has.
 /// the range is from Range.start to (Range.start + Range.length)
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Range {
     /// If true, notifies that data has been cleared from this range.
     /// If false, notifies existing data range.
@@ -514,7 +513,7 @@ impl CompactEncoding<Range> for State {
 }
 
 /// Extension message. Type 9. Use this for custom messages in your application.
-#[derive(Serialize, Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Extension {
     /// Name of the custom message
     pub name: String,
